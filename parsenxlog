@@ -80,13 +80,13 @@ while 1:
     
     i=0
     while i <= len(lines)-1:
-		#lines[i]=lines[i][0:-1]	
+	#lines[i]=lines[i][0:-1]	
 		
 		if len(lines[i])>0:
 			while (len(lines[i])>0) and (lines[i][-1] != '}'):
 				lines[i]=lines[i][0:-1]
 		else:
-			i=i+1
+			i=i+1#new
 			continue
 	
 		#get srcip	
@@ -123,6 +123,7 @@ while 1:
 			file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode(codepage)+'\n')
 			file2.close()
 			summ=summ+1
+			i=i+1
 			continue
 	
 	
@@ -136,7 +137,7 @@ while 1:
 	
 		#construct ossec-style message	    
 		try:
-			lines[i]=a["srcip"]+' '+a["EventTime"]+u' (NXLog) '
+			lines[i]=a["srcip"]+u' '+a["EventTime"]+u' (NXLog) '
 		except:
 			file = open(parserlog, 'a')
 			file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON codepage error: \n')
@@ -144,14 +145,13 @@ while 1:
 			i=i+1
 			continue
     
-	#	if a.has_key('Channel'):
-		lines[i]=lines[i]+u'WinEvtLog: '+a["Channel"]+u': '
+		if a.has_key('Channel'):
+			lines[i]=lines[i]+u'WinEvtLog: '+a["Channel"]+u': '
 	
 		if a.has_key("EventType"):
 			if a["EventType"] == "INFO":
 				a["EventType"]=u"INFORMATION"
-			
-		lines[i]=lines[i]+a["EventType"]+u'('
+			lines[i]=lines[i]+a["EventType"]+u'('
 	
 		if a.has_key("EventID"):
 			lines[i]=lines[i] + str(a["EventID"])+u'): '
@@ -202,19 +202,16 @@ while 1:
 				a["Message"]=repSymb(a["Message"], "%"+str(j), dict["%"+str(j)])
 				j=j+1
     
-			lines[i]=lines[i]+a["Message"]
-			#add spacer between ossec-massage and original message
-			if old_message != " ":
-				lines[i]=lines[i]+u' -------------- '+old_message
-			else:
-				while lines[i].find('\n')!= -1:
-					lines[i]=lines[i][0:lines[i].find('\n')]+u' '+lines[i][lines[i].find('\n')+1:]
-				while lines[i].find('\r')!= -1:
-					lines[i]=lines[i][0:lines[i].find('\r')]+u' '+lines[i][lines[i].find('\r')+1:]
-		
+		lines[i]=lines[i]+a["Message"]
+		#add spacer between ossec-massage and original message
+		if old_message != " ":
+			lines[i]=lines[i]+u' -------------- '+old_message
 		else:
-			lines[i]=lines[i]+a["Message"]
-		
+			while lines[i].find('\n')!= -1:
+				lines[i]=lines[i][0:lines[i].find('\n')]+u' '+lines[i][lines[i].find('\n')+1:]
+			while lines[i].find('\r')!= -1:
+				lines[i]=lines[i][0:lines[i].find('\r')]+u' '+lines[i][lines[i].find('\r')+1:]
+				
 		try:
 			file2= open(to_ossec_file,'a')
 			file2.write(lines[i].encode(codepage).replace('\r',' ').replace('\n',' ').replace('\t',' ')+'\n')
@@ -225,7 +222,7 @@ while 1:
 			file2.write('JSON write or encode error '+lines[i].encode(codepage)+'\n')
 			file2.close()
 		i=i+1
-		print 'Events added: '+str(len(lines))
-		time.sleep(0.5)
+	print 'Events added: '+str(len(lines))
+	time.sleep(0.5)
 
-file.close()
+#file.close()

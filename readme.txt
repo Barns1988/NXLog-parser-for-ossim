@@ -6,7 +6,7 @@ Messages from NXLog should be formatted this type:
 //(ip_of_computer_with_agent) (JSON_message)
 
 Output-type is follow:
-192.168.1.12 1999-02-21 ...
+192.168.1.12 1999-02-21 15:21:17 ...
 //(ip_of_computer_with_agent) (eventttime) (ossec-formatted message)
 
 

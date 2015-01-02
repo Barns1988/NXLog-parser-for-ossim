@@ -7,7 +7,7 @@ Messages from NXLog should be formatted this type:
 
 Output-type is follow:
 192.168.1.12 1999-02-21 ...
-//(ip_of_computer_with_agent) (eventtype) (ossec-formatted message)
+//(ip_of_computer_with_agent) (eventttime) (ossec-formatted message)
 
 
 U need make some changes in ossec decoder - replace '^WinEvt' to 'WinEvt' in windows-decoder to make it work

@@ -7,26 +7,6 @@ import re
 #import os
 from datetime import datetime
 
-def repSymb(s, ch_old, ch_new):
-    s_new  = s
-    i = s_new.find(ch_old)
-    if  i !=-1:
-        s_new = s_new[0:i] + ch_new+s_new[i+len(ch_old):]
-    return s_new
-
-def is_russian(msg,chanel):
-    if chanel <> 'Security':
-	return True
-    
-    msg=msg[0:msg.find(':')]
-
-    i=192
-    while i <=255:
-	if msg.find(chr(i).decode('cp1251'))>= 0:
-	    return True
-	i=i+1
-    return False
-
 pattern = re.compile(r'^.*?:\t(\t)*(?P<var>.*?)(\r\n(\t|\r)(?P<other>.*))*$', re.S)
 pattern2= re.compile(r'\{\"(?P<id>\d+)\"\:\"(?P<msg>.*)\"\}')
 
@@ -35,6 +15,29 @@ nxlog = '/var/log/nxlog/logmsg2.txt'
 #error_file = '/var/log/nxlog//errors.txt'
 to_ossec_file = '/var/log/nxlog/log3.txt'
 parserlog = '/var/log/nxlog/nxlog.log'
+codepage='cp1251'
+
+#this function replase ch_old string to ch_new string in s string
+def repSymb(s, ch_old, ch_new):
+    s_new  = s
+    i = s_new.find(ch_old)
+    if  i !=-1:
+        s_new = s_new[0:i] + ch_new+s_new[i+len(ch_old):]
+    return s_new
+
+#this function check language of message - is it russin or not. If U`re use anothe language U should change 'i' (first letter in regional codepage)
+def is_russian(msg,chanel):
+    if chanel <> 'Security':
+	return True
+    
+    msg=msg[0:msg.find(':')]
+
+    i=192 #first letter in regional codepage
+    while i <=255:
+	if msg.find(chr(i).decode(codepage))>= 0:
+	    return True
+	i=i+1
+    return False
 
 file = open(parserlog, 'a')
 file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON to ossec-win started... \n')
@@ -58,7 +61,7 @@ while i <= len(messages)-1: #making messages dict
 m=0
 summ=0
 while 1:
-    if m == 3600: #every 60 minutes
+    if m == 3600: #every 60 minutes write statistic
 	file = open(parserlog, 'a')
 	file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON to ossec-win alive. Parsed '+str(summ)+' events... \n')
 	file.close()
@@ -107,11 +110,11 @@ while 1:
 	    i=i+1
 	    continue
 	
-	#non-windows logs (radmin, etc)
+	#non-windows logs (radmin, etc) we will write directly to output file without changes
 	    
 	if a['SourceModuleName'] == 'radmin':
 	    file2= open(to_ossec_file,'a')
-	    file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode('cp1251')+'\n')
+	    file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode(codepage)+'\n')
 	    file2.close()
 	    summ=summ+1
 	    continue
@@ -119,12 +122,12 @@ while 1:
 	
 	
 	#windows logs
-	
+	#somechanges for win2003 and earlier log format
 	if a.has_key("FileName"):
 	    a.update({"Channel":a["FileName"]})
 	
 	
-		    
+	#construct ossec-style message	    
 	try:
     	    lines[i]=a["srcip"]+' '+a["EventTime"]+u' (NXLog) '
 	except:
@@ -165,6 +168,7 @@ while 1:
         
 	
 	old_message=u" "
+	#if this message exist in message-file, contain non english chars  and not security - remake it to standart ossec-message
 	if messagesdict.has_key(str(a["EventID"])) and (is_russian(a["Message"],a["Channel"])):
 	#remake message
 	    dict={}
@@ -190,6 +194,7 @@ while 1:
 		j=j+1
     
         lines[i]=lines[i]+a["Message"]
+		#add spacer between ossec-massage and original message
         if old_message != " ":
     	    lines[i]=lines[i]+u' -------------- '+old_message
     	else:
@@ -200,12 +205,12 @@ while 1:
 		
 	try:
 	    file2= open(to_ossec_file,'a')
-    	    file2.write(lines[i].encode('cp1251').replace('\r',' ').replace('\n',' ').replace('\t',' ')+'\n')
-    	    summ=summ+1
-    	except:
-    	    file2= open(error_file,'a')
-    	    file2.write('JSON write or encode error '+lines[i].encode('cp1251')+'\n')
-#	    pass
+    	file2.write(lines[i].encode(codepage).replace('\r',' ').replace('\n',' ').replace('\t',' ')+'\n')
+		file2.close()
+    	summ=summ+1
+    except:
+    	file2= open(error_file,'a')
+    	file2.write('JSON write or encode error '+lines[i].encode(codepage)+'\n')
     	file2.close()
 	i=i+1
     print 'Events added: '+str(len(lines))

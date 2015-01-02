@@ -1,10 +1,8 @@
 #!/usr/bin/python
 
-
 import time
 import json
 import re
-#import os
 from datetime import datetime
 
 pattern = re.compile(r'^.*?:\t(\t)*(?P<var>.*?)(\r\n(\t|\r)(?P<other>.*))*$', re.S)
@@ -28,28 +26,31 @@ def repSymb(s, ch_old, ch_new):
 #this function check language of message - is it russin or not. If U`re use anothe language U should change 'i' (first letter in regional codepage)
 def is_russian(msg,chanel):
     if chanel <> 'Security':
-	return True
+		return True
     
     msg=msg[0:msg.find(':')]
 
     i=192 #first letter in regional codepage
     while i <=255:
-	if msg.find(chr(i).decode(codepage))>= 0:
-	    return True
-	i=i+1
+		if msg.find(chr(i).decode(codepage))>= 0:
+			return True
+		i=i+1
     return False
 
 file = open(parserlog, 'a')
 file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON to ossec-win started... \n')
 file.close()
 
-file3= open(vista_msgs,'r')#reading messages-file
+#reading messages-file
+file3= open(vista_msgs,'r')
 messages=file3.readlines()
 file3.close()
 
 messagesdict={}
 i=0
-while i <= len(messages)-1: #making messages dict
+
+#making messages dict
+while i <= len(messages)-1: 
     messages[i]=messages[i][0:-1]
     result=pattern2.match(messages[i])
     a=result.groupdict()
@@ -62,158 +63,169 @@ m=0
 summ=0
 while 1:
     if m == 3600: #every 60 minutes write statistic
-	file = open(parserlog, 'a')
-	file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON to ossec-win alive. Parsed '+str(summ)+' events... \n')
-	file.close()
-	m=0
-	summ=0
+		file = open(parserlog, 'a')
+		file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON to ossec-win alive. Parsed '+str(summ)+' events... \n')
+		file.close()
+		m=0
+		summ=0
     print 'Loop started'
     m=m+1
 
     file = open(nxlog,'r')
     lines=file.readlines()
     file.close()
+	
     file = open(nxlog,'w')#cleanup nxlogs
     file.close()
     
     i=0
     while i <= len(lines)-1:
-	lines[i]=lines[i][0:-1]
-	if len(lines[i])>0:
-	    while (len(lines[i])>0)and (lines[i][-1] != '}'):
-		lines[i]=lines[i][0:-1]
-	else:
-	    continue
-        k=lines[i].find('{')
-        srcip=lines[i][0:k]
-        lines[i]=lines[i][k:]
-        
-        while len(lines[i])>0 and lines[i][0] <> '{' and lines[i][0] <> u'{':
-    	    lines[i]=lines[i][1:]
-        
-	try:
-            a=json.loads(lines[i])
-	except:
-	    file = open(parserlog, 'a')
-	    file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON format error \n')
-	    file.close()
-	    i=i+1
-	    continue
-	
-	
-	try:
-	    a.update({"srcip":srcip[0:-1]})
-	except:
-	    file = open(parserlog, 'a')
-	    file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON source IP format Error \n')
-	    file.close()
-	    i=i+1
-	    continue
-	
-	#non-windows logs (radmin, etc) we will write directly to output file without changes
-	    
-	if a['SourceModuleName'] == 'radmin':
-	    file2= open(to_ossec_file,'a')
-	    file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode(codepage)+'\n')
-	    file2.close()
-	    summ=summ+1
-	    continue
-	
-	
-	
-	#windows logs
-	#somechanges for win2003 and earlier log format
-	if a.has_key("FileName"):
-	    a.update({"Channel":a["FileName"]})
-	
-	
-	#construct ossec-style message	    
-	try:
-    	    lines[i]=a["srcip"]+' '+a["EventTime"]+u' (NXLog) '
-	except:
-	    file = open(parserlog, 'a')
-	    file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON codepage error: \n')
-	    file.close()
-	    i=i+1
-	    continue
-        if a.has_key('Channel'):
-	    lines[i]=lines[i]+u'WinEvtLog: '+a["Channel"]+u': '
-	
-        if a.has_key("EventType"):
-    	    if a["EventType"] == "INFO":
-    		a["EventType"]=u"INFORMATION"
-	    lines[i]=lines[i]+a["EventType"]+u'('
-
-        if a.has_key("EventID"):
-	    lines[i]=lines[i] + str(a["EventID"])+u'): '
-	
-        if a.has_key("SourceName"):
-	    lines[i]=lines[i]+a["SourceName"]+u': '
-	
-	if a.has_key("TargetUserName"):
-	    lines[i]=lines[i]+a["TargetUserName"]+u': '
-	else:
-    	    lines[i]=lines[i]+u'(no user): '
-    
-        if a.has_key("TargetDomainName"):
-	    lines[i]=lines[i]+a["TargetDomainName"]+u': '
-        else:
-	    lines[i]=lines[i]+u'no domain: '
-        
-	if a.has_key("Hostname"):
-	    lines[i]=lines[i]+a["Hostname"]+u': '
-	else:
-    	    lines[i]=lines[i]+u'no hostname: '
-        
-        
-	
-	old_message=u" "
-	#if this message exist in message-file, contain non english chars  and not security - remake it to standart ossec-message
-	if messagesdict.has_key(str(a["EventID"])) and (is_russian(a["Message"],a["Channel"])):
-	#remake message
-	    dict={}
-	    j=0
-	    old_message= a["Message"]
-	
-	    while old_message.find('\n')!= -1:
-		old_message=old_message[0:old_message.find('\n')]+u' '+old_message[old_message.find('\n')+1:]
-	    while old_message.find('\r')!= -1:
-		old_message=old_message[0:old_message.find('\r')]+u' '+old_message[old_message.find('\r')+1:]
-	    
-	    while a["Message"]!= None and (pattern.match(a["Message"]) != None):
-    		j=1+j
-		result=pattern.match(a["Message"])
-		tempdict=result.groupdict()
-		a["Message"]=tempdict["other"]
-		dict.update({"%"+str(j):tempdict["var"]})
-    
-    	    j=1
-	    a["Message"]=messagesdict[str(a["EventID"])]
-	    while dict.has_key('%'+str(j)):
-		a["Message"]=repSymb(a["Message"], "%"+str(j), dict["%"+str(j)])
-		j=j+1
-    
-        lines[i]=lines[i]+a["Message"]
-		#add spacer between ossec-massage and original message
-        if old_message != " ":
-    	    lines[i]=lines[i]+u' -------------- '+old_message
-    	else:
-    	    while lines[i].find('\n')!= -1:
-    		lines[i]=lines[i][0:lines[i].find('\n')]+u' '+lines[i][lines[i].find('\n')+1:]
-    	    while lines[i].find('\r')!= -1:
-    		lines[i]=lines[i][0:lines[i].find('\r')]+u' '+lines[i][lines[i].find('\r')+1:]
+		#lines[i]=lines[i][0:-1]	
 		
-	try:
-	    file2= open(to_ossec_file,'a')
-    	file2.write(lines[i].encode(codepage).replace('\r',' ').replace('\n',' ').replace('\t',' ')+'\n')
-		file2.close()
-    	summ=summ+1
-    except:
-    	file2= open(error_file,'a')
-    	file2.write('JSON write or encode error '+lines[i].encode(codepage)+'\n')
-    	file2.close()
-	i=i+1
-    print 'Events added: '+str(len(lines))
-    time.sleep(0.5)
+		if len(lines[i])>0:
+			while (len(lines[i])>0) and (lines[i][-1] != '}'):
+				lines[i]=lines[i][0:-1]
+		else:
+			i=i+1
+			continue
+	
+		#get srcip	
+		k=lines[i].find('{')
+		srcip=lines[i][0:k]
+		lines[i]=lines[i][k:]
+        
+		while len(lines[i])>0 and lines[i][0] <> '{' and lines[i][0] <> u'{':
+			lines[i]=lines[i][1:]
+        
+		try:
+			a=json.loads(lines[i])
+		except:
+			file = open(parserlog, 'a')
+			file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON format error \n')
+			file.close()
+			i=i+1
+			continue
+	
+	
+		try:
+			a.update({"srcip":srcip[0:-1]})
+		except:
+			file = open(parserlog, 'a')
+			file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON source IP format Error \n')
+			file.close()
+			i=i+1
+			continue
+	
+		#non-windows logs (radmin, etc) we will write directly to output file without changes
+	    
+		if a['SourceModuleName'] == 'radmin':
+			file2= open(to_ossec_file,'a')
+			file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode(codepage)+'\n')
+			file2.close()
+			summ=summ+1
+			continue
+	
+	
+	
+		#windows logs
+	
+		#some changes for win2003 and earlier log format
+		if a.has_key("FileName"):
+			a.update({"Channel":a["FileName"]})
+	
+	
+		#construct ossec-style message	    
+		try:
+			lines[i]=a["srcip"]+' '+a["EventTime"]+u' (NXLog) '
+		except:
+			file = open(parserlog, 'a')
+			file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON codepage error: \n')
+			file.close()
+			i=i+1
+			continue
+    
+	#	if a.has_key('Channel'):
+		lines[i]=lines[i]+u'WinEvtLog: '+a["Channel"]+u': '
+	
+		if a.has_key("EventType"):
+			if a["EventType"] == "INFO":
+				a["EventType"]=u"INFORMATION"
+			
+		lines[i]=lines[i]+a["EventType"]+u'('
+	
+		if a.has_key("EventID"):
+			lines[i]=lines[i] + str(a["EventID"])+u'): '
+	
+		if a.has_key("SourceName"):
+			lines[i]=lines[i]+a["SourceName"]+u': '
+	
+		if a.has_key("TargetUserName"):
+			lines[i]=lines[i]+a["TargetUserName"]+u': '
+		else:
+			lines[i]=lines[i]+u'(no user): '
+    
+		if a.has_key("TargetDomainName"):
+			lines[i]=lines[i]+a["TargetDomainName"]+u': '
+		else:
+			lines[i]=lines[i]+u'no domain: '
+        
+		if a.has_key("Hostname"):
+			lines[i]=lines[i]+a["Hostname"]+u': '
+		else:
+			lines[i]=lines[i]+u'no hostname: '
+        
+        
+	
+		old_message=u' '
+		#if this message exist in message-file, contain non english chars  and not security - remake it to standart ossec-message
+		if messagesdict.has_key(str(a["EventID"])) and (is_russian(a["Message"],a["Channel"])):
+			dict={}
+			j=0
+			old_message= a["Message"]
+	
+			#remove \n and \r
+			while old_message.find('\n')!= -1:
+				old_message=old_message[0:old_message.find('\n')]+u' '+old_message[old_message.find('\n')+1:]
+			while old_message.find('\r')!= -1:
+				old_message=old_message[0:old_message.find('\r')]+u' '+old_message[old_message.find('\r')+1:]
+	    
+			while a["Message"]!= None and (pattern.match(a["Message"]) != None):
+				j=1+j
+				result=pattern.match(a["Message"])
+				tempdict=result.groupdict()
+				a["Message"]=tempdict["other"]
+				dict.update({"%"+str(j):tempdict["var"]})
+    
+			j=1
+			a["Message"]=messagesdict[str(a["EventID"])]
+			while dict.has_key('%'+str(j)):
+				a["Message"]=repSymb(a["Message"], "%"+str(j), dict["%"+str(j)])
+				j=j+1
+    
+			lines[i]=lines[i]+a["Message"]
+			#add spacer between ossec-massage and original message
+			if old_message != " ":
+				lines[i]=lines[i]+u' -------------- '+old_message
+			else:
+				while lines[i].find('\n')!= -1:
+					lines[i]=lines[i][0:lines[i].find('\n')]+u' '+lines[i][lines[i].find('\n')+1:]
+				while lines[i].find('\r')!= -1:
+					lines[i]=lines[i][0:lines[i].find('\r')]+u' '+lines[i][lines[i].find('\r')+1:]
+		
+		else:
+			lines[i]=lines[i]+a["Message"]
+		
+		try:
+			file2= open(to_ossec_file,'a')
+			file2.write(lines[i].encode(codepage).replace('\r',' ').replace('\n',' ').replace('\t',' ')+'\n')
+			file2.close()
+			summ=summ+1
+		except:
+			file2= open(error_file,'a')
+			file2.write('JSON write or encode error '+lines[i].encode(codepage)+'\n')
+			file2.close()
+		i=i+1
+		print 'Events added: '+str(len(lines))
+		time.sleep(0.5)
 
 file.close()

@@ -5,4 +5,9 @@ Messages from NXLog should be formatted this type:
 192.168.1.12 {...}
 //(ip_of_computer_with_agent) (JSON_message)
 
-U need make some changes in ossec decoder- replace '^WinEvt' to 'WinEvt' in windows-decoder to make it work
+Output-type is follow:
+192.168.1.12 1999-02-21 ...
+//(ip_of_computer_with_agent) (eventtype) (ossec-formatted message)
+
+
+U need make some changes in ossec decoder - replace '^WinEvt' to 'WinEvt' in windows-decoder to make it work

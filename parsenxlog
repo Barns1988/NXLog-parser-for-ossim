@@ -8,11 +8,11 @@ from datetime import datetime
 pattern = re.compile(r'^.*?:\t(\t)*(?P<var>.*?)(\r\n(\t|\r)(?P<other>.*))*$', re.S)
 pattern2= re.compile(r'\{\"(?P<id>\d+)\"\:\"(?P<msg>.*)\"\}')
 
-vista_msgs = '/var/log/nxlog/ParseNXLog/vista_sec_nxlog.json'
-nxlog = '/var/log/nxlog/logmsg2.txt'
+vista_msgs = '/var/log/nxlog/ParseNXLog/vista_sec_nxlog.json' #file with messages
+nxlog = '/var/log/nxlog/logmsg2.txt' #input file
 #error_file = '/var/log/nxlog//errors.txt'
-to_ossec_file = '/var/log/nxlog/log3.txt'
-parserlog = '/var/log/nxlog/nxlog.log'
+to_ossec_file = '/var/log/nxlog/log3.txt' #output file
+parserlog = '/var/log/nxlog/nxlog.log' #save logs to nxlog default logfile
 codepage='cp1251'
 
 #this function replase ch_old string to ch_new string in s string
@@ -23,7 +23,7 @@ def repSymb(s, ch_old, ch_new):
         s_new = s_new[0:i] + ch_new+s_new[i+len(ch_old):]
     return s_new
 
-#this function check language of message - is it russin or not. If U`re use anothe language U should change 'i' (first letter in regional codepage)
+#this function check language of message - is it russian or not. If U`re use another language U should change 'i' (first letter in regional codepage)
 def is_russian(msg,chanel):
     if chanel <> 'Security':
 		return True
@@ -130,7 +130,7 @@ while 1:
 	
 		#windows logs
 	
-		#some changes for win2003 and earlier log format
+		#some changes for win2003 and earlier log-format
 		if a.has_key("FileName"):
 			a.update({"Channel":a["FileName"]})
 	
@@ -177,7 +177,7 @@ while 1:
         
 	
 		old_message=u' '
-		#if this message exist in message-file, contain non english chars  and not security - remake it to standart ossec-message
+		#if this message exist in message-file, contain non english chars and security - remake it to standart ossec-message
 		if messagesdict.has_key(str(a["EventID"])) and (is_russian(a["Message"],a["Channel"])):
 			dict={}
 			j=0

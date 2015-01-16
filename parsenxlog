@@ -118,7 +118,7 @@ while 1:
 	
 		#non-windows logs (radmin, etc) we will write directly to output file without changes
 	    
-		if a['SourceModuleName'] == 'radmin':
+		if (a['SourceModuleType'] != 'im_msvistalog') and (a['SourceModuleType'] != 'im_mseventlog'):
 			file2= open(to_ossec_file,'a')
 			file2.write(a["srcip"]+' RADMIN (NXLog) '+a['Message'].encode(codepage)+'\n')
 			file2.close()
@@ -137,7 +137,7 @@ while 1:
 	
 		#construct ossec-style message	    
 		try:
-			lines[i]=a["srcip"]+u' '+a["EventTime"]+u' (NXLog) '
+			lines[i]=a["srcip"]+' '+a["EventTime"]+u' (NXLog) ('+a["Hostname"]+u') '+a["srcip"]+u'->WinEvtLog '
 		except:
 			file = open(parserlog, 'a')
 			file.write(datetime.today().strftime('%Y-%m-%d %H:%M:%S')+' JSON codepage error: \n')
